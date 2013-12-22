@@ -1,0 +1,176 @@
+extends layout
+
+block content
+	p Welcome to #{title}
+	.ktv-body
+		.big-room.room
+			h3.room-title 大包房
+			ul(data-type="big-room")
+				li
+					.block-item
+				li
+					.block-item
+				li
+					.block-item
+				li
+					.block-item
+				li
+					.block-item
+				li
+					.block-item
+				li
+					.block-item
+				li
+					.block-item
+		.mid-room.room
+			h3.room-title 中包房
+			ul(data-type="mid-room")
+				li
+					.block-item
+				li
+					.block-item
+				li
+					.block-item
+				li
+					.block-item
+				li
+					.block-item
+				li
+					.block-item
+		.small-room.room
+			h3.room-title 小包房
+			ul(data-type="small-room")
+				li
+					.block-item
+				li
+					.block-item
+				li
+					.block-item
+				li
+					.block-item
+				li
+					.block-item
+				li
+					.block-item
+		.biz-room.room
+			h3.room-title 商务包房
+			ul(data-type="biz-room")
+				li
+					.block-item
+				li
+					.block-item
+				li
+					.block-item
+				li
+					.block-item
+	.qa-body#popbox
+		.sub-title
+			|请填写备注信息
+			span.close
+		.sub-content
+			textarea(placeholder="请填写电话姓名等相关信息")
+			button 提交
+
+	script.
+		var socket = io.connect('http://localhost:3000');
+		function refresh(data,name){
+			var rooms = $(name).find('.block-item');
+			for(var i = 0,length=data.length;i<length;i++){
+				if(data[i].status===1){
+					rooms.eq(i).addClass('on').text(data[i].content);
+				}
+			}
+		}
+		socket.on('news',function(data){
+			console.log(data);
+			var bigrooms = data[0],
+				midrooms = data[1],
+				smallrooms = data[2],
+				bizrooms = data[3];
+
+			refresh(bigrooms,".big-room");
+			refresh(midrooms,".mid-room");
+			refresh(smallrooms,".small-room");
+			refresh(bizrooms,".biz-room");
+		});
+
+		socket.on('brodcast-order',function(data){
+			//- console.log(data);
+			var type = data.type,
+				index = data.index,
+				chunk = data.chunk;
+
+			$("."+type).find('.block-item').eq(index).addClass('on').text(chunk);
+		})
+
+		var currentData = {
+			push:function(data){
+				this.data = data;
+			},
+			get:function(){	
+				return this.data;
+			}
+		}
+
+		var blockItems= $('.block-item').click(function(){			
+			var popbox = document.getElementById('popbox');
+			var data={
+				//- type:({"big-room":"big","mid-room":"mid","small-room":"small","biz-room":"biz"})[]
+					type:$(this).parent().parent().attr('data-type'),
+					index:$(this).parent().parent().find('li').index($(this).parent())			
+			}
+			currentData.push(data);
+			PopLayer.init(popbox,function(chunk){
+				var data = currentData.get();
+				data.chunk = chunk
+				$("."+data.type).find('.block-item').eq(data.index).addClass('on').text(chunk);
+				socket.emit('order',data);	
+			}).show();
+			
+		})
+		var PopLayer = {
+			init:function(centerNode,callback){
+				if(typeof this.instance === "object")
+					return this.instance;
+				this.instance = this;
+				this.centerNode = centerNode;
+				this.mask = document.createElement('div');
+				this.mask.className="mask";
+
+				document.body.appendChild(this.mask);
+				this.listener(callback);
+				return this;
+			},
+			show:function(){
+				var centerNode = this.centerNode;
+				document.body.style.overflow = "hidden";
+				var innerHeight = window.innerHeight||window.screen.availHeight,
+				innerWidth = window.innerWidth||window.screen.availWidth;
+				centerNode.style.display = "block";
+				centerNode.style.position = "fixed";
+				centerNode.style.top = (innerHeight * 0.5 - 226 * 0.5) + "px";
+				centerNode.style.left = (innerWidth * 0.5 - 430 * 0.5) + "px";
+				centerNode.style["zIndex"] = 10000;
+				this.mask.style.display = "block";
+				return this;
+			},
+			hide:function(c){
+				var centerNode = this.centerNode;
+				document.body.style.overflow = "visible";
+				this.mask.style.display = "none";
+				centerNode.style.display = "none";
+				return this;
+			},
+			listener:function(callback){
+				$('span.close').click(function(){
+					PopLayer.hide();
+				});
+				$('button').click(function(){
+					var val = $('textarea').val();
+					$('textarea').val("");
+					callback(val);
+					PopLayer.hide();
+				})
+			}
+		}
+
