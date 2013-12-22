@@ -55,6 +55,9 @@ io.sockets.on('connection', function (socket) {
     update(data,1);
     socket.broadcast.emit('brodcast-order',data);
   })
+  socket.on('delete',function(data){
+    update(data,0);
+  })
 
 });
 

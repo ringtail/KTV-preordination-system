@@ -87,6 +87,9 @@ block content
 		hr
 		p copyright© 2013 Ringtail in BUAA
 	script.
+		//- socket.emit('delete',{"type":"small-room","index":1,"content":""})
+		var socket = io.connect('http://10.32.183.26:3000');
+		//you can in delete a room in console....
 		$(document).ready(function(){
 			if(window.chrome){
 				$('.banner li').css('background-size',"100% 100%");
@@ -97,7 +100,7 @@ block content
 					speed:500
 				})
 			// 此处需要进行替换ip
-			var socket = io.connect('http://10.32.183.26:3000');
+			
 			function refresh(data,name){
 				var rooms = $(name).find('.block-item');
 				for(var i = 0,length=data.length;i<length;i++){
