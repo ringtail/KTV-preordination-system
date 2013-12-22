@@ -1,7 +1,20 @@
 extends layout
 
 block content
-	p Welcome to #{title}
+	.banner
+		ul
+			li(style="background-image: url(/css/pic1.jpg);")
+				h1 豪华的走廊
+				p 令您流连忘返
+				a.btn(href="https://github.com/ringtail/KTV-preordination-system",target="_blank") view on github
+			li(style="background-image: url(/css/pic2.jpg);")
+				h1 极具现代化的豪华包房
+				p 供您尽情欢唱
+				a.btn(href="https://github.com/ringtail/KTV-preordination-system",target="_blank") view on github
+			li(style="background-image: url(/css/pic3.jpg)")
+				h1 更有简约的VIP包房
+				p 让您畅游音乐世界
+				a.btn(href="https://github.com/ringtail/KTV-preordination-system",target="_blank") view on github
 	.ktv-body
 		.big-room.room
 			h3.room-title 大包房
@@ -65,112 +78,132 @@ block content
 					.block-item
 	.qa-body#popbox
 		.sub-title
-			|请填写备注信息
+			|请填写电话、姓名、预约时间、人数等相关信息
 			span.close
 		.sub-content
-			textarea(placeholder="请填写电话姓名等相关信息")
+			textarea(placeholder="")
 			button 提交
-
+	.footer
+		hr
+		p copyright© 2013 Ringtail in BUAA
 	script.
-		var socket = io.connect('http://localhost:3000');
-		function refresh(data,name){
-			var rooms = $(name).find('.block-item');
-			for(var i = 0,length=data.length;i<length;i++){
-				if(data[i].status===1){
-					rooms.eq(i).addClass('on').text(data[i].content);
+		$(document).ready(function(){
+			if(window.chrome){
+				$('.banner li').css('background-size',"100% 100%");
+			}
+			$('.banner').unslider({
+					fluid:true,
+					dots:true,
+					speed:500
+				})
+			// 此处需要进行替换ip
+			var socket = io.connect('http://10.32.183.26:3000');
+			function refresh(data,name){
+				var rooms = $(name).find('.block-item');
+				for(var i = 0,length=data.length;i<length;i++){
+					if(data[i].status===1){
+						rooms.eq(i).addClass('on').text(data[i].content);
+					}
 				}
 			}
-		}
-		socket.on('news',function(data){
-			console.log(data);
-			var bigrooms = data[0],
-				midrooms = data[1],
-				smallrooms = data[2],
-				bizrooms = data[3];
+			socket.on('news',function(data){
+				console.log(data);
+				var bigrooms = data[0],
+					midrooms = data[1],
+					smallrooms = data[2],
+					bizrooms = data[3];
 
-			refresh(bigrooms,".big-room");
-			refresh(midrooms,".mid-room");
-			refresh(smallrooms,".small-room");
-			refresh(bizrooms,".biz-room");
-		});
+				refresh(bigrooms,".big-room");
+				refresh(midrooms,".mid-room");
+				refresh(smallrooms,".small-room");
+				refresh(bizrooms,".biz-room");
+			});
 
-		socket.on('brodcast-order',function(data){
-			//- console.log(data);
-			var type = data.type,
-				index = data.index,
-				chunk = data.chunk;
+			socket.on('brodcast-order',function(data){
+				//- console.log(data);
+				var type = data.type,
+					index = data.index,
+					chunk = data.chunk;
 
-			$("."+type).find('.block-item').eq(index).addClass('on').text(chunk);
+				$("."+type).find('.block-item').eq(index).addClass('on').text(chunk);
+			})
+
+			var currentData = {
+				push:function(data){
+					this.data = data;
+				},
+				get:function(){	
+					return this.data;
+				}
+			}
+
+			var blockItems= $('.block-item').click(function(){
+				if($(this).hasClass('on')){
+					return false;
+				}			
+				var popbox = document.getElementById('popbox');
+				var data={
+					//- type:({"big-room":"big","mid-room":"mid","small-room":"small","biz-room":"biz"})[]
+						type:$(this).parent().parent().attr('data-type'),
+						index:$(this).parent().parent().find('li').index($(this).parent())			
+				}
+				currentData.push(data);
+				PopLayer.init(popbox,function(chunk){
+					var data = currentData.get();
+					data.chunk = chunk
+					$("."+data.type).find('.block-item').eq(data.index).addClass('on').text(chunk);
+					socket.emit('order',data);	
+				}).show();
+				
+			})
+			var PopLayer = {
+				init:function(centerNode,callback){
+					if(typeof this.instance === "object")
+						return this.instance;
+					this.instance = this;
+					this.centerNode = centerNode;
+					this.mask = document.createElement('div');
+					this.mask.className="mask";
+
+					document.body.appendChild(this.mask);
+					this.listener(callback);
+					return this;
+				},
+				show:function(){
+					var centerNode = this.centerNode;
+					document.body.style.overflow = "hidden";
+					var innerHeight = window.innerHeight||window.screen.availHeight,
+					innerWidth = window.innerWidth||window.screen.availWidth;
+					centerNode.style.display = "block";
+					centerNode.style.position = "fixed";
+					centerNode.style.top = (innerHeight * 0.5 - 226 * 0.5) + "px";
+					centerNode.style.left = (innerWidth * 0.5 - 430 * 0.5) + "px";
+					centerNode.style["zIndex"] = 10000;
+					this.mask.style.display = "block";
+					return this;
+				},
+				hide:function(c){
+					var centerNode = this.centerNode;
+					document.body.style.overflow = "visible";
+					this.mask.style.display = "none";
+					centerNode.style.display = "none";
+					return this;
+				},
+				listener:function(callback){
+					$('span.close').click(function(){
+						PopLayer.hide();
+					});
+					$('button').click(function(){
+						var val = $('textarea').val();
+						if(val ===""){
+							alert('请填写必要信息')
+							return false;
+						}
+						$('textarea').val("");
+						callback(val);
+						PopLayer.hide();
+					})
+				}
+			}
 		})
-
-		var currentData = {
-			push:function(data){
-				this.data = data;
-			},
-			get:function(){	
-				return this.data;
-			}
-		}
-
-		var blockItems= $('.block-item').click(function(){			
-			var popbox = document.getElementById('popbox');
-			var data={
-				//- type:({"big-room":"big","mid-room":"mid","small-room":"small","biz-room":"biz"})[]
-					type:$(this).parent().parent().attr('data-type'),
-					index:$(this).parent().parent().find('li').index($(this).parent())			
-			}
-			currentData.push(data);
-			PopLayer.init(popbox,function(chunk){
-				var data = currentData.get();
-				data.chunk = chunk
-				$("."+data.type).find('.block-item').eq(data.index).addClass('on').text(chunk);
-				socket.emit('order',data);	
-			}).show();
-			
-		})
-		var PopLayer = {
-			init:function(centerNode,callback){
-				if(typeof this.instance === "object")
-					return this.instance;
-				this.instance = this;
-				this.centerNode = centerNode;
-				this.mask = document.createElement('div');
-				this.mask.className="mask";
-
-				document.body.appendChild(this.mask);
-				this.listener(callback);
-				return this;
-			},
-			show:function(){
-				var centerNode = this.centerNode;
-				document.body.style.overflow = "hidden";
-				var innerHeight = window.innerHeight||window.screen.availHeight,
-				innerWidth = window.innerWidth||window.screen.availWidth;
-				centerNode.style.display = "block";
-				centerNode.style.position = "fixed";
-				centerNode.style.top = (innerHeight * 0.5 - 226 * 0.5) + "px";
-				centerNode.style.left = (innerWidth * 0.5 - 430 * 0.5) + "px";
-				centerNode.style["zIndex"] = 10000;
-				this.mask.style.display = "block";
-				return this;
-			},
-			hide:function(c){
-				var centerNode = this.centerNode;
-				document.body.style.overflow = "visible";
-				this.mask.style.display = "none";
-				centerNode.style.display = "none";
-				return this;
-			},
-			listener:function(callback){
-				$('span.close').click(function(){
-					PopLayer.hide();
-				});
-				$('button').click(function(){
-					var val = $('textarea').val();
-					$('textarea').val("");
-					callback(val);
-					PopLayer.hide();
-				})
-			}
-		}
-
+		
